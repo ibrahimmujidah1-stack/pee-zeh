@@ -40,6 +40,21 @@ const INITIAL_SPRAYS: Spray[] = [];
 const HOST_KEY = 'p_zeh_host_user_v3';
 const PARTIES_KEY = 'p_zeh_parties_v3';
 const SPRAYS_KEY_PREFIX = 'p_zeh_party_sprays_v3_';
+const ONBOARDING_KEY = 'p_zeh_onboarding_completed_v3';
+
+export function hasCompletedOnboarding(): boolean {
+  try {
+    return localStorage.getItem(ONBOARDING_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+export function setOnboardingCompleted(completed: boolean = true): void {
+  try {
+    localStorage.setItem(ONBOARDING_KEY, completed ? 'true' : 'false');
+  } catch {}
+}
 
 function sanitizeParty(p: any): Party {
   return {

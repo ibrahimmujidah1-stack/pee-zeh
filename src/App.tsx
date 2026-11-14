@@ -1,9 +1,15 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { HostDashboard } from './pages/HostDashboard';
+import { Onboarding } from './pages/Onboarding';
+import { HostBankSettlement } from './pages/HostBankSettlement';
+import { HostParties } from './pages/HostParties';
+import { HostQrCode } from './pages/HostQrCode';
 import { GuestSprayPad } from './pages/GuestSprayPad';
 import { ProjectorWall } from './pages/ProjectorWall';
+import { SplitScreenDemo } from './pages/SplitScreenDemo';
 import { PollarWalletProvider } from './services/pollar';
+import { hasCompletedOnboarding } from './services/storage';
 
 interface Props {
   children: ReactNode;
@@ -43,7 +49,7 @@ class ErrorBoundary extends Component<Props, State> {
           <button
             onClick={() => {
               localStorage.clear();
-              window.location.href = '/';
+              window.location.href = '/onboarding';
             }}
             className="px-6 py-3 rounded-2xl bg-emerald-500 text-obsidian-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/30"
           >
@@ -57,6 +63,13 @@ class ErrorBoundary extends Component<Props, State> {
   }
 }
 
+const HomeRootRedirect: React.FC = () => {
+  if (!hasCompletedOnboarding()) {
+    return <Navigate to="/onboarding" replace />;
+  }
+  return <HostDashboard />;
+};
+
 export const App: React.FC = () => {
   return (
     <ErrorBoundary>
@@ -64,9 +77,26 @@ export const App: React.FC = () => {
         <Router>
           <div className="min-h-screen bg-obsidian-950 text-white flex flex-col font-sans">
             <Routes>
-              {/* Host FinTech App */}
-              <Route path="/" element={<HostDashboard />} />
+              {/* Root with automatic Onboarding check */}
+              <Route path="/" element={<HomeRootRedirect />} />
+
+              {/* Host First-Time Onboarding & PIN Setup */}
+              <Route path="/onboarding" element={<Onboarding />} />
+
+              {/* Host FinTech Dashboard */}
               <Route path="/host" element={<HostDashboard />} />
+
+              {/* Dedicated Bank Settlement Vault */}
+              <Route path="/bank" element={<HostBankSettlement />} />
+              <Route path="/host/bank" element={<HostBankSettlement />} />
+
+              {/* Dedicated Owambe Parties Manager */}
+              <Route path="/parties" element={<HostParties />} />
+              <Route path="/host/parties" element={<HostParties />} />
+
+              {/* Dedicated Table QR Tent Card */}
+              <Route path="/qr" element={<HostQrCode />} />
+              <Route path="/host/qr" element={<HostQrCode />} />
 
               {/* Guest Mobile Spray Pad */}
               <Route path="/spray/:id" element={<GuestSprayPad />} />
@@ -74,6 +104,9 @@ export const App: React.FC = () => {
 
               {/* Venue Projector Live Wall */}
               <Route path="/wall/:id" element={<ProjectorWall />} />
+
+              {/* 90-Second Demo Split Screen Studio */}
+              <Route path="/demo" element={<SplitScreenDemo />} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
