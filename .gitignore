@@ -36,3 +36,7 @@ credentials.json
 # Firebase / Build caches
 .firebase
 .firebase/*
+
+demo_temp
+demo_temp/*
+

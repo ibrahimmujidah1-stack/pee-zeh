@@ -8,6 +8,7 @@ import { HostQrCode } from './pages/HostQrCode';
 import { GuestSprayPad } from './pages/GuestSprayPad';
 import { ProjectorWall } from './pages/ProjectorWall';
 import { SplitScreenDemo } from './pages/SplitScreenDemo';
+import { MobileDemoStudio } from './pages/MobileDemoStudio';
 import { PollarWalletProvider } from './services/pollar';
 import { hasCompletedOnboarding } from './services/storage';
 
@@ -107,6 +108,10 @@ export const App: React.FC = () => {
 
               {/* 90-Second Demo Split Screen Studio */}
               <Route path="/demo" element={<SplitScreenDemo />} />
+
+              {/* 4-Minute Full Mobile Demo Video Studio */}
+              <Route path="/demo-mobile" element={<MobileDemoStudio />} />
+              <Route path="/video" element={<MobileDemoStudio />} />
 
               {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
