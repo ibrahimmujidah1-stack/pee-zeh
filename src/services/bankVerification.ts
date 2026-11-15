@@ -1,5 +1,5 @@
 // Live Nigerian Bank Account Check & NUBAN Verification Service
-// Validates account numbers against CBN NIBSS standards & resolves real bank records
+// Validates account numbers against CBN NIBSS standards & resolves real bank records via Paystack
 
 export interface NigerianBank {
   name: string;
@@ -34,20 +34,6 @@ export const PRIMARY_NIGERIAN_BANKS: NigerianBank[] = [
   { name: 'Lotus Bank', code: '303' },
 ];
 
-/**
- * Known real account mappings for immediate instant verification
- */
-const KNOWN_ACCOUNT_RESOLUTIONS: Record<string, string> = {
-  '9136447931': 'IBRAHIM MUJIDAH',
-  '9136447934': 'ADELEKE TUNDE SULAIMAN',
-  '0142859124': 'CHIEF BABATUNDE ADELEKE',
-  '2084719203': 'DR. CHUKWUMA OKONKWO',
-  '1023847591': 'TITILAYO BALOGUN ENTERPRISES',
-  '0034829104': 'HAJIYA AMINA DANJUMA',
-  '5051528491': 'MONIEPOINT / CORONATION MERCHANTS',
-  '8034567890': 'FOLAKE OGUNLESI',
-};
-
 export interface BankResolveResult {
   valid: boolean;
   accountName?: string;
@@ -55,17 +41,40 @@ export interface BankResolveResult {
   bankName: string;
   bankCode: string;
   error?: string;
-  source: 'live_api' | 'nuban_verified' | 'nibss_verified';
+  source: 'live_paystack_api' | 'manual';
+  requiresKey?: boolean;
+}
+
+const PAYSTACK_STORAGE_KEY = 'p_zeh_paystack_secret_key';
+
+export function getPaystackSecretKey(): string {
+  try {
+    const stored = localStorage.getItem(PAYSTACK_STORAGE_KEY);
+    if (stored && stored.trim().startsWith('sk_')) return stored.trim();
+  } catch {}
+  const envKey = import.meta.env.VITE_PAYSTACK_SECRET_KEY;
+  if (envKey && envKey.trim().startsWith('sk_')) return envKey.trim();
+  return '';
+}
+
+export function setPaystackSecretKey(key: string): void {
+  try {
+    if (!key || !key.trim()) {
+      localStorage.removeItem(PAYSTACK_STORAGE_KEY);
+    } else {
+      localStorage.setItem(PAYSTACK_STORAGE_KEY, key.trim());
+    }
+  } catch {}
 }
 
 /**
  * Live Bank Account Check & Name Resolution:
- * Dynamically resolves real account holder name for ANY unique 10-digit number
+ * Strictly hits the official Paystack NIBSS gateway when key is provided.
+ * Absolutely NO synthetic or randomly generated names.
  */
 export async function resolveNigerianBankAccount(
   accountNumber: string,
-  bankName: string,
-  _preferredHostName?: string
+  bankName: string
 ): Promise<BankResolveResult> {
   const cleanNumber = (accountNumber || '').trim().replace(/\D/g, '');
 
@@ -76,7 +85,7 @@ export async function resolveNigerianBankAccount(
       bankName,
       bankCode: '',
       error: 'Nigerian bank account numbers must be exactly 10 digits.',
-      source: 'live_api',
+      source: 'manual',
     };
   }
 
@@ -86,74 +95,66 @@ export async function resolveNigerianBankAccount(
            b.name.toLowerCase().includes(bankName.toLowerCase())
   ) || { name: bankName, code: '999992', isFintech: true };
 
-  // 1. Check known resolution mapping
-  if (KNOWN_ACCOUNT_RESOLUTIONS[cleanNumber]) {
-    return {
-      valid: true,
-      accountName: KNOWN_ACCOUNT_RESOLUTIONS[cleanNumber],
-      accountNumber: cleanNumber,
-      bankName: matchedBank.name,
-      bankCode: matchedBank.code,
-      source: 'nibss_verified',
-    };
-  }
+  const paystackKey = getPaystackSecretKey();
 
-  // 2. Try live Paystack resolution if secret key provided
-  const paystackKey = import.meta.env.VITE_PAYSTACK_SECRET_KEY;
+  // If a Paystack Secret Key is configured, perform REAL live NIBSS resolution
   if (paystackKey) {
     try {
-      const res = await fetch(
-        `https://api.paystack.co/bank/resolve?account_number=${cleanNumber}&bank_code=${matchedBank.code}`,
-        {
-          headers: {
-            Authorization: `Bearer ${paystackKey}`,
-          },
-        }
-      );
+      // In dev with proxy, use /api/paystack; in prod, direct or cloud proxy
+      const endpoint = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
+        ? `/api/paystack/bank/resolve?account_number=${cleanNumber}&bank_code=${matchedBank.code}`
+        : `https://api.paystack.co/bank/resolve?account_number=${cleanNumber}&bank_code=${matchedBank.code}`;
+
+      const res = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          Authorization: `Bearer ${paystackKey}`,
+        },
+      });
+
       const data = await res.json();
+
       if (data.status && data.data?.account_name) {
         return {
           valid: true,
-          accountName: data.data.account_name.toUpperCase(),
+          accountName: String(data.data.account_name).toUpperCase(),
           accountNumber: cleanNumber,
           bankName: matchedBank.name,
           bankCode: matchedBank.code,
-          source: 'live_api',
+          source: 'live_paystack_api',
+        };
+      } else {
+        return {
+          valid: false,
+          accountNumber: cleanNumber,
+          bankName: matchedBank.name,
+          bankCode: matchedBank.code,
+          error: data.message || `Account not found on ${matchedBank.name}. Please check the number and selected bank.`,
+          source: 'live_paystack_api',
         };
       }
     } catch (err: any) {
-      console.warn('Paystack live resolve network error:', err);
+      console.warn('Paystack live resolve request error:', err);
+      return {
+        valid: false,
+        accountNumber: cleanNumber,
+        bankName: matchedBank.name,
+        bankCode: matchedBank.code,
+        error: 'Unable to reach Paystack gateway. Please verify network or enter your name manually.',
+        source: 'live_paystack_api',
+      };
     }
   }
 
-  // 3. For any other 10-digit account number, compute an authentic, deterministic NIBSS account holder name
-  // Derived strictly from the 10 digits so every unique account number has its OWN distinct real name!
-  const firstNames = [
-    'ADELEKE', 'OLUWASEUN', 'BABATUNDE', 'CHIBUZO', 'EMMANUEL', 
-    'FOLAKE', 'ADENIKE', 'TITILAYO', 'KABIRU', 'TAOFIK', 
-    'CHUKWUMA', 'AYOMIDE', 'OLUMIDE', 'ZAINAB', 'SULAIMAN'
-  ];
-  const middleInitials = ['M.', 'O.', 'B.', 'T.', 'A.', 'C.', 'E.', 'K.'];
-  const lastNames = [
-    'OGUNLESI', 'BALOGUN', 'OKONKWO', 'DANJUMA', 'BELLO', 
-    'TINUBU', 'AWOLOWO', 'SANUSI', 'FASHOLA', 'ADEGOKE',
-    'IBRAHIM', 'EZE', 'OSUNTOGUN', 'ALABI', 'BAKARE'
-  ];
-
-  // Compute distinct hash from digits
-  const seed = cleanNumber.split('').reduce((acc, c, idx) => acc + parseInt(c, 10) * Math.pow(7, idx % 5), 0);
-  const fn = firstNames[seed % firstNames.length];
-  const mid = middleInitials[(seed * 3) % middleInitials.length];
-  const ln = lastNames[(seed * 11) % lastNames.length];
-
-  const resolvedName = `${fn} ${mid} ${ln}`;
-
+  // If NO Paystack key is configured:
+  // DO NOT FABRICATE A FAKE NAME. Let the host enter their real name.
   return {
     valid: true,
-    accountName: resolvedName,
     accountNumber: cleanNumber,
     bankName: matchedBank.name,
     bankCode: matchedBank.code,
-    source: 'nibss_verified',
+    requiresKey: true,
+    error: 'Live NIBSS auto-lookup requires a Paystack API key. Please type your real Account Name below.',
+    source: 'manual',
   };
 }

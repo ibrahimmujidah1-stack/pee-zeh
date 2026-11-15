@@ -39,8 +39,8 @@ export const Onboarding: React.FC = () => {
 
   // Settlement Bank
   const [bankName, setBankName] = useState<string>('OPay Digital Bank (PayCom)');
-  const [accountNumber, setAccountNumber] = useState<string>('9136447934');
-  const [accountName, setAccountName] = useState<string>('ADELEKE TUNDE SULAIMAN');
+  const [accountNumber, setAccountNumber] = useState<string>('');
+  const [accountName, setAccountName] = useState<string>('');
   const [isCheckingBank, setIsCheckingBank] = useState<boolean>(false);
   const [bankResult, setBankResult] = useState<BankResolveResult | null>(null);
 
@@ -89,12 +89,18 @@ export const Onboarding: React.FC = () => {
       setHostSecurityPin(pin);
     }
 
-    const cleanAcc = accountNumber.trim().replace(/\D/g, '') || '9136447934';
-    const cleanName = accountName.trim() || 'ADELEKE TUNDE SULAIMAN';
+    const cleanAcc = accountNumber.trim().replace(/\D/g, '');
+    if (cleanAcc.length !== 10) {
+      alert('Please enter a valid 10-digit Nigerian bank account number.');
+      return;
+    }
+
+    const cleanName = accountName.trim() || hostName.trim().toUpperCase() || 'HOST SETTLEMENT';
 
     const updatedParty: Party = {
       id: 'owambe-2026',
       slug: 'owambe-2026',
+      partyCode: 'OWAMBE-2026',
       name: partyName.trim() || 'Coronation & Owambe Celebration 2026',
       celebrantName: celebrantName.trim() || 'High Chief Adeleke',
       celebrantPhoto: 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
@@ -621,33 +627,48 @@ export const Onboarding: React.FC = () => {
                       required
                       value={accountNumber}
                       onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ''))}
-                      placeholder="e.g. 9136447934"
+                      placeholder="Enter 10-digit account or phone number"
                       className="w-full px-3.5 py-2.5 rounded-xl bg-obsidian-950 border border-white/15 text-white font-mono text-sm tracking-wider focus:outline-none focus:border-emerald-400"
                     />
 
-                    {/* Auto-resolved status banner */}
+                    {/* Live NIBSS Check Status Banner */}
                     {bankResult && (
-                      <div className="mt-1.5 p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-[10px] flex items-center justify-between animate-fade-in">
-                        <div className="flex items-center gap-1.5 truncate">
-                          <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                          <span className="truncate font-bold">
-                            ✓ Verified: {bankResult.accountName}
-                          </span>
-                        </div>
-                        <span className="text-[8px] px-1 py-0.2 rounded bg-emerald-400 text-obsidian-950 font-black shrink-0">
-                          NIBSS MATCH
-                        </span>
+                      <div className="mt-1.5 animate-fade-in">
+                        {bankResult.source === 'live_paystack_api' && bankResult.valid && bankResult.accountName ? (
+                          <div className="p-2 rounded-xl bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 text-[10px] flex items-center justify-between">
+                            <div className="flex items-center gap-1.5 truncate">
+                              <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span className="truncate font-bold">
+                                ✓ NIBSS Live Name: {bankResult.accountName}
+                              </span>
+                            </div>
+                            <span className="text-[8px] px-1 py-0.2 rounded bg-emerald-400 text-obsidian-950 font-black shrink-0">
+                              PAYSTACK LIVE
+                            </span>
+                          </div>
+                        ) : bankResult.source === 'live_paystack_api' && !bankResult.valid ? (
+                          <div className="p-2 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-[10px] flex items-center gap-1.5 font-semibold">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                            <span>{bankResult.error || 'Account not found for this bank.'}</span>
+                          </div>
+                        ) : bankResult.requiresKey ? (
+                          <div className="p-2 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-[10px] flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span>Live NIBSS auto-lookup requires Paystack Key. Enter your real name below.</span>
+                          </div>
+                        ) : null}
                       </div>
                     )}
                   </div>
 
                   <div>
                     <label className="text-[10px] font-bold text-gray-300 block mb-1">
-                      Account Name (Auto-Generated from NIBSS)
+                      Account Holder Name
                     </label>
                     <input
                       type="text"
                       required
+                      placeholder="Enter full name as registered on bank app"
                       value={accountName}
                       onChange={(e) => setAccountName(e.target.value)}
                       className="w-full px-3.5 py-2.5 rounded-xl bg-obsidian-950 border border-white/15 text-emerald-300 text-xs font-bold focus:outline-none focus:border-emerald-400"

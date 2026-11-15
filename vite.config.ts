@@ -13,6 +13,13 @@ export default defineConfig({
   server: {
     port: 5173,
     host: true,
+    proxy: {
+      '/api/paystack': {
+        target: 'https://api.paystack.co',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/paystack/, ''),
+      },
+    },
   },
 });
 

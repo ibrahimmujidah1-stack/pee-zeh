@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
   Lock, Unlock, ScanFace, CheckCircle, AlertCircle, 
-  ArrowLeft, Landmark, KeyRound, Wallet, Building, QrCode, ShieldCheck 
+  ArrowLeft, Landmark, KeyRound, Wallet, Building, QrCode, ShieldCheck, X 
 } from 'lucide-react';
 import { 
   getHostUser, getParties, getPartyById, saveParty, 
@@ -13,7 +13,8 @@ import {
   hasCustomHostPin, getHostSecurityPin 
 } from '../services/biometrics';
 import { 
-  resolveNigerianBankAccount, PRIMARY_NIGERIAN_BANKS, BankResolveResult 
+  resolveNigerianBankAccount, PRIMARY_NIGERIAN_BANKS, BankResolveResult,
+  getPaystackSecretKey, setPaystackSecretKey
 } from '../services/bankVerification';
 
 export const HostBankSettlement: React.FC = () => {
@@ -29,6 +30,11 @@ export const HostBankSettlement: React.FC = () => {
   const [accountNumber, setAccountNumber] = useState<string>(party?.accountNumber || '9136447931');
   const [accountName, setAccountName] = useState<string>(party?.accountName || host?.name || 'IBRAHIM MUJIDAH');
   const [settlementUpdated, setSettlementUpdated] = useState<boolean>(false);
+
+  // Paystack Live Verification Key State
+  const [paystackKeyInput, setPaystackKeyInput] = useState<string>(getPaystackSecretKey());
+  const [showPaystackModal, setShowPaystackModal] = useState<boolean>(false);
+  const [hasPaystackKey, setHasPaystackKey] = useState<boolean>(Boolean(getPaystackSecretKey()));
 
   // Live Bank Resolution State
   const [isCheckingBank, setIsCheckingBank] = useState<boolean>(false);
@@ -60,7 +66,7 @@ export const HostBankSettlement: React.FC = () => {
     const clean = accountNumber.trim().replace(/\D/g, '');
     if (clean.length === 10) {
       setIsCheckingBank(true);
-      resolveNigerianBankAccount(clean, bankName, host?.name).then((res) => {
+      resolveNigerianBankAccount(clean, bankName).then((res) => {
         setIsCheckingBank(false);
         setBankCheckResult(res);
         if (res.valid && res.accountName) {
@@ -70,7 +76,7 @@ export const HostBankSettlement: React.FC = () => {
     } else {
       setBankCheckResult(null);
     }
-  }, [accountNumber, bankName, host?.name]);
+  }, [accountNumber, bankName]);
 
   const handleUnlockWithPin = (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -341,29 +347,58 @@ export const HostBankSettlement: React.FC = () => {
                     className="w-full px-3 py-2.5 rounded-xl bg-obsidian-900 border border-white/10 text-white font-mono text-sm tracking-wider focus:outline-none focus:border-emerald-500"
                   />
 
-                  {/* Auto-resolved live check badge */}
+                  {/* Live Bank Check Status Badge */}
                   {bankCheckResult && (
-                    <div className="mt-1.5 p-2 rounded-xl text-[10px] flex items-center justify-between bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
-                      <div className="flex items-center gap-1.5 truncate">
-                        <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                        <span className="truncate font-semibold">
-                          Live Name: {bankCheckResult.accountName}
-                        </span>
-                      </div>
-                      <span className="text-[8px] px-1 py-0.2 rounded bg-emerald-400 text-obsidian-950 font-black uppercase shrink-0">
-                        NIBSS MATCH
-                      </span>
+                    <div className="mt-1.5">
+                      {bankCheckResult.source === 'live_paystack_api' && bankCheckResult.valid && bankCheckResult.accountName ? (
+                        <div className="p-2 rounded-xl text-[10px] flex items-center justify-between bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 animate-fade-in">
+                          <div className="flex items-center gap-1.5 truncate">
+                            <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="truncate font-semibold">
+                              ✓ NIBSS Live: {bankCheckResult.accountName}
+                            </span>
+                          </div>
+                          <span className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-400 text-obsidian-950 font-black uppercase shrink-0">
+                            PAYSTACK LIVE
+                          </span>
+                        </div>
+                      ) : bankCheckResult.source === 'live_paystack_api' && !bankCheckResult.valid ? (
+                        <div className="p-2 rounded-xl text-[10px] flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 text-red-400 font-semibold animate-fade-in">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                          <span>{bankCheckResult.error || 'Account not found for this bank.'}</span>
+                        </div>
+                      ) : !hasPaystackKey ? (
+                        <div className="p-2 rounded-xl text-[10px] bg-amber-500/10 border border-amber-500/30 text-amber-300 flex items-center justify-between animate-fade-in">
+                          <div className="flex items-center gap-1.5">
+                            <AlertCircle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                            <span>Live NIBSS auto-lookup requires Paystack key</span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setShowPaystackModal(true)}
+                            className="px-2 py-0.5 rounded bg-amber-400 text-obsidian-950 font-black text-[9px] uppercase hover:bg-amber-300 shrink-0"
+                          >
+                            Connect Key
+                          </button>
+                        </div>
+                      ) : null}
                     </div>
                   )}
                 </div>
 
                 <div>
-                  <label className="text-[10px] font-bold text-gray-300 block mb-1">
-                    Account Name (Auto-Resolved)
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-[10px] font-bold text-gray-300">
+                      Account Holder Name
+                    </label>
+                    <span className="text-[9px] text-gray-400">
+                      Enter full name as registered on bank app
+                    </span>
+                  </div>
                   <input
                     type="text"
                     required
+                    placeholder="Enter your exact bank account name"
                     value={accountName}
                     onChange={(e) => setAccountName(e.target.value)}
                     className="w-full px-3 py-2.5 rounded-xl bg-obsidian-900 border border-white/10 text-emerald-300 text-xs focus:outline-none focus:border-emerald-500 font-bold"
@@ -400,6 +435,88 @@ export const HostBankSettlement: React.FC = () => {
             </div>
           )}
         </div>
+
+        {/* Paystack Connection Modal */}
+        {showPaystackModal && (
+          <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4 animate-fade-in text-white">
+            <div className="w-full max-w-sm rounded-3xl bg-obsidian-900 border border-emerald-500/30 p-5 space-y-4 shadow-2xl">
+              <div className="flex items-center justify-between pb-2 border-b border-white/10">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">🔑</span>
+                  <div>
+                    <h3 className="text-sm font-black text-white font-display">Connect Paystack API</h3>
+                    <p className="text-[10px] text-gray-400">Live CBN / NIBSS Bank Resolution</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowPaystackModal(false)}
+                  className="w-7 h-7 rounded-full bg-white/10 text-gray-300 hover:text-white flex items-center justify-center"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <p className="text-xs text-gray-300 leading-relaxed">
+                Under Central Bank of Nigeria regulations, live account name queries require an authenticated financial gateway. Enter your Paystack Secret Key below.
+              </p>
+
+              <div>
+                <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                  Paystack Secret Key (sk_test_... or sk_live_...)
+                </label>
+                <input
+                  type="password"
+                  placeholder="sk_test_..."
+                  value={paystackKeyInput}
+                  onChange={(e) => setPaystackKeyInput(e.target.value.trim())}
+                  className="w-full px-3 py-2.5 rounded-xl bg-obsidian-950 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-emerald-400"
+                />
+                <p className="text-[9px] text-gray-500 mt-1">
+                  Kept safe in private browser storage or via VITE_PAYSTACK_SECRET_KEY
+                </p>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPaystackSecretKey('');
+                    setPaystackKeyInput('');
+                    setHasPaystackKey(false);
+                    setShowPaystackModal(false);
+                  }}
+                  className="py-2.5 px-3 rounded-xl bg-obsidian-950 border border-white/10 text-gray-400 text-xs font-bold"
+                >
+                  Disconnect
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (paystackKeyInput && !paystackKeyInput.startsWith('sk_')) {
+                      alert('Paystack Secret Key must start with sk_test_ or sk_live_');
+                      return;
+                    }
+                    setPaystackSecretKey(paystackKeyInput);
+                    setHasPaystackKey(Boolean(paystackKeyInput));
+                    setShowPaystackModal(false);
+                    const clean = accountNumber.trim().replace(/\D/g, '');
+                    if (clean.length === 10) {
+                      setIsCheckingBank(true);
+                      resolveNigerianBankAccount(clean, bankName).then((res) => {
+                        setIsCheckingBank(false);
+                        setBankCheckResult(res);
+                        if (res.valid && res.accountName) setAccountName(res.accountName);
+                      });
+                    }
+                  }}
+                  className="flex-1 py-2.5 rounded-xl bg-emerald-500 text-obsidian-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/30 hover:bg-emerald-400 transition-all"
+                >
+                  Save & Enable NIBSS 🚀
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Footer Navigation */}
         <nav className="shrink-0 h-16 bg-obsidian-950 border-t border-white/10 flex items-center justify-around px-2 z-40">
