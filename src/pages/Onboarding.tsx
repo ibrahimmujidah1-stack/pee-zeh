@@ -643,7 +643,7 @@ export const Onboarding: React.FC = () => {
                               </span>
                             </div>
                             <span className="text-[8px] px-1 py-0.2 rounded bg-emerald-400 text-obsidian-950 font-black shrink-0">
-                              PAYSTACK LIVE
+                              NIBSS LIVE
                             </span>
                           </div>
                         ) : bankResult.source === 'live_paystack_api' && !bankResult.valid ? (
