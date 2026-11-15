@@ -13,7 +13,7 @@ import { playCashChime, playSprayWhoosh } from '../services/sound';
 import { usePollarWallet } from '../services/pollar';
 import { authenticateWithBiometrics } from '../services/biometrics';
 import { fetchLiveTestnetTx } from '../services/stellar';
-import { Spray, SprayTier, PaymentMethod } from '../types';
+import { Spray, SprayTier, PaymentMethod, BallerTitle } from '../types';
 import confetti from 'canvas-confetti';
 
 type PadStep = 
@@ -34,7 +34,8 @@ export const GuestSprayPad: React.FC = () => {
   const [step, setStep] = useState<PadStep>('input');
   
   const [amountStr, setAmountStr] = useState<string>('50');
-  const [guestName, setGuestName] = useState<string>(user?.name || 'Chief Olowolayemo');
+  const [ballerTitle, setBallerTitle] = useState<BallerTitle>('Odogwu');
+  const [guestName, setGuestName] = useState<string>(user?.name || 'Odogwu Babatunde');
   const [shoutout, setShoutout] = useState<string>('Congratulations my people! Soft life forever! 🥂');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('naira_card_bank');
   const [confirmedTx, setConfirmedTx] = useState<{ txHash: string; spray: Spray } | null>(null);
@@ -193,10 +194,14 @@ export const GuestSprayPad: React.FC = () => {
     else if (numAmount >= 5) tier = 'chairman';
     else tier = 'pocket';
 
+    const isOdogwu = ballerTitle === 'Odogwu' || numAmount >= 50 || tier === 'otunba';
+
     const spray: Spray = {
       id: `spray-${Date.now()}`,
       partyId: party?.id || 'owambe-2026',
       guestName: guestName.trim(),
+      ballerTitle,
+      isOdogwu,
       amount: numAmount,
       currency: 'USDC',
       shoutout: shoutout.trim(),
@@ -229,10 +234,14 @@ export const GuestSprayPad: React.FC = () => {
       else if (numAmount >= 5) tier = 'chairman';
       else tier = 'pocket';
 
+      const isOdogwu = ballerTitle === 'Odogwu' || numAmount >= 50 || tier === 'otunba';
+
       const spray: Spray = {
         id: `spray-${Date.now()}`,
         partyId: party?.id || 'owambe-2026',
         guestName: guestName.trim(),
+        ballerTitle,
+        isOdogwu,
         amount: numAmount,
         currency: 'USDC',
         shoutout: shoutout.trim(),
@@ -314,6 +323,38 @@ export const GuestSprayPad: React.FC = () => {
                 Spray Celebrants
               </h2>
               <div className="w-5" />
+            </div>
+
+            {/* Baller Title Selector */}
+            <div className="pt-1">
+              <span className="text-[9px] font-bold text-gray-400 block uppercase mb-1">
+                Choose Baller Title:
+              </span>
+              <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+                {[
+                  { title: 'Odogwu', label: '👑 Odogwu' },
+                  { title: 'Chief', label: '🎩 Chief' },
+                  { title: 'Chairman', label: '👔 Chairman' },
+                  { title: 'Otunba', label: '🥂 Otunba' },
+                  { title: 'Yeye Oge', label: '💃 Yeye Oge' },
+                  { title: 'Omo Olope', label: '🌟 Omo Olope' },
+                ].map((item) => (
+                  <button
+                    key={item.title}
+                    type="button"
+                    onClick={() => setBallerTitle(item.title as BallerTitle)}
+                    className={`px-2.5 py-1 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all border ${
+                      ballerTitle === item.title
+                        ? item.title === 'Odogwu'
+                          ? 'bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 text-obsidian-950 border-amber-300 font-black shadow-md shadow-amber-500/30'
+                          : 'bg-emerald-500 text-obsidian-950 border-emerald-400 font-black shadow-md shadow-emerald-500/30'
+                        : 'bg-obsidian-900 text-gray-300 border-white/10 hover:border-white/20'
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* From & To in compact cards */}

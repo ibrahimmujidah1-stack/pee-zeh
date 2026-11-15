@@ -57,9 +57,12 @@ export function setOnboardingCompleted(completed: boolean = true): void {
 }
 
 function sanitizeParty(p: any): Party {
+  const slug = p?.slug || p?.id || 'owambe-2026';
+  const partyCode = p?.partyCode || slug.toUpperCase();
   return {
     id: p?.id || 'owambe-2026',
-    slug: p?.slug || p?.id || 'owambe-2026',
+    slug,
+    partyCode,
     name: p?.name || 'Owambe Celebration',
     celebrantName: p?.celebrantName || 'The Celebrants',
     celebrantPhoto: p?.celebrantPhoto || 'https://images.unsplash.com/photo-1519741497674-611481863552?auto=format&fit=crop&w=800&q=80',
@@ -68,7 +71,7 @@ function sanitizeParty(p: any): Party {
     hostWallet: p?.hostWallet || 'GDQ5BL7R3X7V2TOWAMBEPZEHSTELLARKEMI9HQY37XZGNR2S7VWP',
     settlementType: p?.settlementType || 'bank',
     bankName: p?.bankName || 'Guaranty Trust Bank (GTBank)',
-    accountNumber: p?.accountNumber || '0142859124',
+    accountNumber: String(p?.accountNumber || '0142859124'),
     accountName: p?.accountName || 'Owambe Event Settlement',
     currency: p?.currency || 'USDC',
     targetAmount: p?.targetAmount || 10000,
@@ -114,10 +117,16 @@ export function getParties(): Party[] {
   }
 }
 
-export function getPartyById(idOrSlug: string): Party | null {
-  if (!idOrSlug) return null;
+export function getPartyById(idOrSlugOrCode: string): Party | null {
+  if (!idOrSlugOrCode) return null;
   const parties = getParties();
-  const found = parties.find((p) => p.id === idOrSlug || p.slug === idOrSlug);
+  const search = idOrSlugOrCode.trim().toLowerCase();
+  const found = parties.find(
+    (p) =>
+      p.id.toLowerCase() === search ||
+      p.slug.toLowerCase() === search ||
+      (p.partyCode && p.partyCode.toLowerCase() === search)
+  );
   return found ? sanitizeParty(found) : null;
 }
 

@@ -1,6 +1,7 @@
 export interface Party {
   id: string;
   slug: string;
+  partyCode?: string;
   name: string;
   celebrantName: string;
   celebrantPhoto: string;
@@ -22,11 +23,14 @@ export interface Party {
 
 export type SprayTier = 'pocket' | 'chairman' | 'executive' | 'otunba' | 'custom';
 export type PaymentMethod = 'pollar_stellar' | 'naira_card_bank' | 'apple_pay';
+export type BallerTitle = 'Odogwu' | 'Chief' | 'Chairman' | 'Otunba' | 'Yeye Oge' | 'Omo Olope';
 
 export interface Spray {
   id: string;
   partyId: string;
   guestName: string;
+  ballerTitle?: BallerTitle;
+  isOdogwu?: boolean;
   amount: number;
   currency: 'USDC' | 'NGN';
   shoutout: string;

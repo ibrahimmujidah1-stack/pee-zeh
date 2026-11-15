@@ -91,11 +91,15 @@ export const Leaderboard: React.FC<LeaderboardProps> = ({ entries, currency = 'U
                         <h4 className="text-sm md:text-base font-bold text-white truncate">
                           {entry.guestName}
                         </h4>
-                        {entry.rank === 1 && (
-                          <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-gold-400 text-black">
-                            CHAIRMAN
+                        {entry.rank === 1 ? (
+                          <span className="text-[10px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-gradient-to-r from-yellow-300 via-amber-400 to-yellow-500 text-black shadow-sm">
+                            👑 ODOGWU
                           </span>
-                        )}
+                        ) : entry.totalAmount >= 50 ? (
+                          <span className="text-[9px] font-black uppercase px-1 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                            ODOGWU
+                          </span>
+                        ) : null}
                       </div>
                       <p className="text-xs text-gray-400 truncate max-w-[180px]">
                         {entry.sprayCount} {entry.sprayCount === 1 ? 'spray' : 'sprays'} • "{entry.latestShoutout || 'Soft life!'}"

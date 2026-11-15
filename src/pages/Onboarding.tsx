@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { 
   Sparkles, ShieldCheck, Lock, Landmark, CheckCircle, 
   ArrowRight, ScanFace, ChevronRight, PartyPopper, Check, AlertCircle,
-  Coins, Smartphone, CreditCard
+  Coins, Smartphone, CreditCard, X, Users
 } from 'lucide-react';
 import { 
   saveHostUser, getHostUser, saveParty, setOnboardingCompleted, 
@@ -18,6 +18,12 @@ export const Onboarding: React.FC = () => {
 
   // Step 1: Image 2-style Lime Hero, Step 2: Party Details, Step 3: PIN Setup, Step 4: Bank Account
   const [currentStep, setCurrentStep] = useState<number>(1);
+  const parties = getParties();
+
+  // Join Existing Party Modal
+  const [showJoinModal, setShowJoinModal] = useState<boolean>(false);
+  const [joinPartyCode, setJoinPartyCode] = useState<string>('OWAMBE-2026');
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   // Form State
   const [hostName, setHostName] = useState<string>(existingHost?.name && existingHost.name !== 'Owambe Host' ? existingHost.name : 'Ibrahim Mujidah');
@@ -221,16 +227,121 @@ export const Onboarding: React.FC = () => {
             </button>
 
             <button
-              onClick={() => navigate('/spray/owambe-2026')}
+              onClick={() => setShowJoinModal(true)}
               className="w-full py-3.5 rounded-full bg-white text-obsidian-950 font-black text-xs uppercase tracking-wider shadow-md hover:bg-gray-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
             >
-              <span>→] Join Existing Spray</span>
+              <span>→] Join Existing Spray / Enter Code</span>
             </button>
 
             <p className="text-[10px] text-obsidian-950/70 text-center font-medium pt-1">
               No sign-up or credit card required • Instant multiplayer link
             </p>
           </div>
+
+          {/* Join with Unique Code Modal */}
+          {showJoinModal && (
+            <div className="absolute inset-0 bg-obsidian-950/95 backdrop-blur-xl z-30 rounded-[44px] p-6 flex flex-col justify-between animate-fade-in text-white border-2 border-emerald-500/30">
+              <div>
+                <div className="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xl">🍾</span>
+                    <h3 className="text-sm font-black text-white font-display">Join Owambe Dance Floor</h3>
+                  </div>
+                  <button
+                    onClick={() => setShowJoinModal(false)}
+                    className="w-7 h-7 rounded-full bg-white/10 text-gray-300 hover:text-white flex items-center justify-center"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+
+                <p className="text-xs text-gray-300 mb-4 leading-relaxed">
+                  Enter the unique party code provided by your host or printed on your table QR tent card.
+                </p>
+
+                <div className="space-y-3">
+                  <div>
+                    <label className="text-[10px] font-bold text-emerald-400 uppercase tracking-wider block mb-1">
+                      Party Unique Code
+                    </label>
+                    <input
+                      type="text"
+                      value={joinPartyCode}
+                      onChange={(e) => {
+                        setJoinPartyCode(e.target.value.toUpperCase().replace(/\s+/g, '-'));
+                        setJoinError(null);
+                      }}
+                      placeholder="e.g. OWAMBE-2026"
+                      className="w-full text-center tracking-widest text-lg font-mono font-bold px-4 py-3 rounded-2xl bg-obsidian-900 border border-emerald-500/40 text-emerald-300 focus:outline-none focus:border-emerald-400"
+                    />
+                    {joinError && (
+                      <p className="text-[11px] text-red-400 font-semibold mt-1.5 text-center">
+                        {joinError}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Active Celebrations List */}
+                  <div>
+                    <span className="text-[10px] text-gray-400 block mb-1.5">
+                      Or select an active celebration:
+                    </span>
+                    <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+                      {parties.map((p) => {
+                        const code = p.partyCode || p.slug.toUpperCase();
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onClick={() => {
+                              setJoinPartyCode(code);
+                              setJoinError(null);
+                            }}
+                            className={`w-full p-2.5 rounded-xl border text-left flex items-center justify-between text-xs transition-all ${
+                              joinPartyCode === code
+                                ? 'bg-emerald-500/20 border-emerald-400 text-white font-bold'
+                                : 'bg-obsidian-900 border-white/10 text-gray-300 hover:border-white/30'
+                            }`}
+                          >
+                            <span className="truncate max-w-[180px]">{p.name}</span>
+                            <span className="font-mono text-[10px] text-emerald-400 font-bold shrink-0">{code}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-2 pt-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const clean = joinPartyCode.trim().toLowerCase();
+                    if (!clean) {
+                      setJoinError('Please enter a party code.');
+                      return;
+                    }
+                    const matched = getPartyById(clean);
+                    const targetSlug = matched ? matched.slug : clean;
+                    navigate(`/spray/${targetSlug}`);
+                  }}
+                  className="w-full py-3.5 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 text-obsidian-950 font-black text-xs uppercase tracking-wider shadow-lg shadow-emerald-500/30 hover:scale-[1.01] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                  <span>Enter Dance Floor 💃</span>
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setShowJoinModal(false)}
+                  className="w-full py-2 text-center text-gray-400 hover:text-white text-xs font-semibold"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
 
         </div>
       )}

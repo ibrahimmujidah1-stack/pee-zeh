@@ -1,4 +1,4 @@
-// Procedural Web Audio API Sound Engine for p-zeh
+// Procedural Web Audio API & Praise Hailing Sound Engine for p-zeh
 // Zero external dependencies, zero 404s, zero latency
 
 let audioCtx: AudioContext | null = null;
@@ -15,6 +15,34 @@ function getAudioContext(): AudioContext | null {
     audioCtx.resume().catch(() => {});
   }
   return audioCtx;
+}
+
+/**
+ * Crisp cash spray whoosh effect
+ */
+export function playSprayWhoosh(): void {
+  try {
+    const ctx = getAudioContext();
+    if (!ctx) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(800, now);
+    osc.frequency.exponentialRampToValueAtTime(200, now + 0.25);
+
+    gain.gain.setValueAtTime(0.2, now);
+    gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+
+    osc.start(now);
+    osc.stop(now + 0.25);
+  } catch (err) {
+    console.warn('Audio whoosh error:', err);
+  }
 }
 
 /**
@@ -91,7 +119,6 @@ export function playOwambeHorn(): void {
       gain.gain.linearRampToValueAtTime(0.2, now + n.start + 0.03);
       gain.gain.exponentialRampToValueAtTime(0.001, now + n.start + n.duration);
 
-      // Low pass filter for brass warmth
       const filter = ctx.createBiquadFilter();
       filter.type = 'lowpass';
       filter.frequency.setValueAtTime(1800, now + n.start);
@@ -109,50 +136,98 @@ export function playOwambeHorn(): void {
 }
 
 /**
- * Money spray whoosh effect (air/flutter)
+ * Authentic African Talking Drum (Gangan) Beats
  */
-export function playSprayWhoosh(): void {
+export function playTalkingDrum(): void {
   try {
     const ctx = getAudioContext();
     if (!ctx) return;
 
-    const bufferSize = ctx.sampleRate * 0.2;
-    const buffer = ctx.createBuffer(1, bufferSize, ctx.sampleRate);
-    const data = buffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) {
-      data[i] = Math.random() * 2 - 1;
-    }
+    const now = ctx.currentTime;
+    const drumBeats = [
+      { start: 0, fStart: 260, fEnd: 150, dur: 0.15 },
+      { start: 0.16, fStart: 320, fEnd: 180, dur: 0.18 },
+      { start: 0.35, fStart: 280, fEnd: 140, dur: 0.14 },
+      { start: 0.50, fStart: 380, fEnd: 210, dur: 0.25 },
+    ];
 
-    const noise = ctx.createBufferSource();
-    noise.buffer = buffer;
+    drumBeats.forEach((b) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    const filter = ctx.createBiquadFilter();
-    filter.type = 'bandpass';
-    filter.frequency.setValueAtTime(800, ctx.currentTime);
-    filter.frequency.exponentialRampToValueAtTime(2400, ctx.currentTime + 0.18);
-    filter.Q.value = 3;
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(b.fStart, now + b.start);
+      osc.frequency.exponentialRampToValueAtTime(b.fEnd, now + b.start + b.dur);
 
-    const gain = ctx.createGain();
-    gain.gain.setValueAtTime(0.25, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
+      gain.gain.setValueAtTime(0.4, now + b.start);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + b.start + b.dur);
 
-    noise.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
 
-    noise.start();
+      osc.start(now + b.start);
+      osc.stop(now + b.start + b.dur);
+    });
   } catch (err) {
-    console.warn('Audio whoosh error:', err);
+    console.warn('Talking drum error:', err);
   }
 }
 
 /**
- * Trigger full celebration sound (horn fanfare + cash register chime)
+ * Royal Odogwu Hailing Praise Audio Engine
+ * Plays royal brass fanfare + talking drums + browser speech praise hailing
  */
-export function playCelebrationSound(): void {
-  playCashChime();
+export function playOdogwuHailingSound(guestName?: string, amount?: number): void {
+  // 1. Play Talking Drums
+  playTalkingDrum();
+
+  // 2. Play Royal Brass Chords
   setTimeout(() => {
     playOwambeHorn();
-  }, 100);
+    playCashChime();
+  }, 180);
+
+  // 3. Spoken Yoruba/Nigerian Praise Hailing via Web Speech API
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    try {
+      const name = guestName || 'Odogwu';
+      const cleanName = name.replace(/[^a-zA-Z0-9 ]/g, '');
+      const praises = [
+        `Odogwu! ${cleanName} is spraying big! Owo ni koko! Clear the dance floor for Odogwu!`,
+        `Otunba ${cleanName}! Billionaire spray! Soft life forever! Hail the chairman!`,
+        `Odogwu na the boss! ${cleanName} is balling on the dance floor! More blessings!`,
+      ];
+      const selectedPraise = praises[Math.floor(Math.random() * praises.length)];
+
+      const utterance = new SpeechSynthesisUtterance(selectedPraise);
+      utterance.rate = 1.05;
+      utterance.pitch = 1.1;
+      utterance.volume = 1.0;
+
+      // Prefer English voice if available
+      const voices = window.speechSynthesis.getVoices();
+      const engVoice = voices.find((v) => v.lang.includes('en') || v.lang.includes('NG'));
+      if (engVoice) utterance.voice = engVoice;
+
+      setTimeout(() => {
+        window.speechSynthesis.speak(utterance);
+      }, 400);
+    } catch (e) {
+      console.warn('Speech synthesis praise bypassed:', e);
+    }
+  }
 }
 
+/**
+ * Trigger celebration sound based on spray
+ */
+export function playCelebrationSound(isOdogwu: boolean = false, guestName?: string, amount?: number): void {
+  if (isOdogwu || (amount && amount >= 50)) {
+    playOdogwuHailingSound(guestName, amount);
+  } else {
+    playCashChime();
+    setTimeout(() => {
+      playOwambeHorn();
+    }, 100);
+  }
+}

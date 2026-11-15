@@ -70,7 +70,13 @@ export const ProjectorWall: React.FC = () => {
       setTriggerCount((c) => c + 1);
 
       if (soundEnabled) {
-        playCelebrationSound();
+        const isOdogwu = Boolean(
+          newSpray.isOdogwu || 
+          newSpray.ballerTitle === 'Odogwu' || 
+          newSpray.amount >= 50 || 
+          newSpray.tier === 'otunba'
+        );
+        playCelebrationSound(isOdogwu, newSpray.guestName, newSpray.amount);
       }
     });
 
